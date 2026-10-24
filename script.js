@@ -7,3 +7,70 @@ document.querySelector('#confirmBooking').onclick=()=>{document.querySelector('#
 const history=[['Mia Santos','Aug 24 · 10:30','Conversation','$10','Completed'],['Daniel Cho','Aug 22 · 14:00','Business English','$10','Completed'],['Sofia Reyes','Aug 20 · 09:30','General English','$10','Completed'],['Mia Santos','Aug 27 · 10:30','Conversation','$10','Upcoming']];document.querySelector('#classHistory').innerHTML=history.map(h=>`<div class="history-row"><b>${h[0]}</b>${h.slice(1,4).map(x=>`<span>${x}</span>`).join('')}<span class="pill ${h[4]==='Completed'?'green':'gold'}">${h[4]}</span></div>`).join('');
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-view]').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.querySelector('#'+b.dataset.view).classList.add('active')});document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>document.querySelector(`[data-view="${b.dataset.go}"]`).click());
 
+
+(() => { const icons = {"discover":"<svg viewBox=\"0 0 32 32\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"10\" r=\"5\"/><path d=\"M3 28v-4a9 9 0 0 1 18 0v4M23 6a5 5 0 0 1 0 10M25 20a8 8 0 0 1 4 7\"/></svg>","booking":"<svg viewBox=\"0 0 32 32\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M6 5h21a2 2 0 0 1 2 2v18a3 3 0 0 1-3 3\"/><path d=\"M5 10h24M23 5v6l-3 15a3 3 0 0 1-3 2H5a2 2 0 0 1-2-2L5 7a2 2 0 0 1 1-2Z\"/><path d=\"m9 19 3 4 6-7\"/></svg>","classes":"<svg viewBox=\"0 0 32 32\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M10 6H6a2 2 0 0 0-2 2v21h24V8a2 2 0 0 0-2-2h-4\"/><rect x=\"10\" y=\"3\" width=\"12\" height=\"5\" rx=\"1.5\"/><path d=\"M10 14h12M10 20h12M10 25h5\"/></svg>","payments":"<svg viewBox=\"0 0 32 32\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"m12 10-3-6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2l-3 6M11 10h10M12 10C7 15 3 20 3 25c0 5 6 6 13 6s13-1 13-6c0-5-4-10-9-15\"/><path d=\"M19 17h-5a3 3 0 0 0 0 6h4a3 3 0 0 1 0 6h-5M16 15v2m0 12v1\"/></svg>"}; document.querySelectorAll('.nav [data-view]').forEach(button => {button.querySelector('i').innerHTML = icons[button.dataset.view] || '';}); })();
+/* Adapt the PillNav glide to both the vertical and mobile navigation. */
+(() => {
+  const nav = document.querySelector('.nav');
+  const buttons = [...nav.querySelectorAll('[data-view]')];
+  const glide = document.createElement('span');
+  glide.className = 'nav-glide';
+  glide.setAttribute('aria-hidden', 'true');
+  nav.prepend(glide);
+  let hovered = null;
+  function sync() {
+    buttons.forEach(button => {
+      if (button.classList.contains('active')) button.setAttribute('aria-current', 'page');
+      else button.removeAttribute('aria-current');
+    });
+    const target = hovered || (nav.contains(document.activeElement) && buttons.includes(document.activeElement) ? document.activeElement : null) || buttons.find(button => button.classList.contains('active'));
+    if (!target) { glide.style.opacity = '0'; return; }
+    glide.style.width = target.offsetWidth + 'px';
+    glide.style.height = target.offsetHeight + 'px';
+    glide.style.transform = 'translate(' + target.offsetLeft + 'px,' + target.offsetTop + 'px)';
+    glide.style.opacity = '1';
+  }
+  buttons.forEach(button => {
+    button.addEventListener('pointerenter', () => { hovered = button; sync(); });
+    button.addEventListener('focus', sync);
+    button.addEventListener('click', sync);
+  });
+  nav.addEventListener('pointerleave', () => { hovered = null; sync(); });
+  nav.addEventListener('focusout', () => requestAnimationFrame(sync));
+  new ResizeObserver(sync).observe(nav);
+  document.fonts.ready.then(sync);
+  sync();
+})();
+
+(() => {
+  const app = document.querySelector('.app');
+  const toggle = document.querySelector('.sidebar-toggle');
+  const compact = window.matchMedia('(max-width:950px)');
+  let preference = null;
+  try { const saved = localStorage.getItem('esl-student-sidebar-expanded'); if (saved !== null) preference = saved === 'true'; } catch {}
+  function apply() {
+    const expanded = preference === null ? !compact.matches : preference;
+    app.classList.toggle('sidebar-collapsed', !expanded);
+    app.classList.toggle('sidebar-expanded', expanded);
+    toggle.setAttribute('aria-expanded', String(expanded));
+    toggle.setAttribute('aria-label', expanded ? 'Collapse sidebar' : 'Expand sidebar');
+    toggle.textContent = expanded ? '‹' : '›';
+  }
+  document.querySelectorAll('.nav [data-view]').forEach(button => {
+    const label = button.querySelector('span').textContent;
+    button.setAttribute('aria-label', label);
+    button.querySelector('i').setAttribute('aria-hidden', 'true');
+    const tip = document.createElement('span');
+    tip.className = 'nav-tooltip';
+    tip.setAttribute('aria-hidden', 'true');
+    tip.textContent = label;
+    button.append(tip);
+  });
+  toggle.addEventListener('click', () => {
+    preference = toggle.getAttribute('aria-expanded') !== 'true';
+    try { localStorage.setItem('esl-student-sidebar-expanded', String(preference)); } catch {}
+    apply();
+  });
+  compact.addEventListener('change', apply);
+  apply();
+})();
